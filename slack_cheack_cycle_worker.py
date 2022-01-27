@@ -57,7 +57,7 @@ class PassSlacktoWorkerInfo:
     def get_msg(self):
         result = self.client.conversations_history(
             channel=self.channel_id, 
-            limit= 1
+            limit= 10
         )
         return result.data['messages']
 
