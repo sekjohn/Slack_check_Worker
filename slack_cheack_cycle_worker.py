@@ -79,7 +79,7 @@ class PassSlacktoWorkerInfo:
     def cheack_overlap_status(self, response: list):
         msg = self.get_msg()
         for i in msg:
-            dt = datetime.fromtimestamp(int(i["ts"])) + timedelta(hours=24)
+            dt = datetime.fromtimestamp(float(i["ts"])) + timedelta(hours=24)
             now_time = datetime.now()
             if "bot_id" in i:
                 if i["bot_id"] == SALCK_BOT_ID:
