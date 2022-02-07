@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime, timedelta
 import requests
 from requests.auth import HTTPBasicAuth
 from slack_sdk import WebClient
@@ -57,7 +58,7 @@ class PassSlacktoWorkerInfo:
     def get_msg(self):
         result = self.client.conversations_history(
             channel=self.channel_id, 
-            limit= 10
+            limit= 2
         )
         return result.data['messages']
 
@@ -78,30 +79,37 @@ class PassSlacktoWorkerInfo:
     def cheack_overlap_status(self, response: list):
         msg = self.get_msg()
         for i in msg:
+            dt = datetime.fromtimestamp(int(i["ts"])) + timedelta(hours=24)
+            now_time = datetime.now()
             if "bot_id" in i:
                 if i["bot_id"] == SALCK_BOT_ID:
                     return False
-                if i["attachments"][0]["fields"]:
-                    fields_worker_list  = [v["value"] for v in i["attachments"][0]["fields"]]
-                    response_worker_list= [ i for i,v in response.json().items() if bool(v)]
-                    if response_worker_list.sort() == fields_worker_list.sort():
-                        return False
+                if "fields" in i["attachments"][0]:
+                    if i["attachments"][0]["fields"]:
+                        fields_worker_list  = [v["value"] for v in i["attachments"][0]["fields"]]
+                        response_worker_list= [ i for i,v in response.json().items() if bool(v)]
+                        if response_worker_list.sort() == fields_worker_list.sort():
+                            return False
+
+                else:
+                    return False
+                if dt <=  now_time:
+                    return False
         return True
 
 
     def worker_status_check(self):
         response = requests.get(self.flower_address + "?status=1", auth=self.auth)
         if response.status_code == 500:
-            print(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
             #self.send_msg(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
+            raise Exception(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
         if response.status_code == 401:
-            print(SLACK_MSG.SLACK_SERVER_AUTH_ERROR_MSG)
             #self.send_msg(SLACK_MSG.SLACK_SERVER_AUTH_ERROR_MSG)
+            raise Exception(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
         if not self.cheack_overlap_status(response):
             return None
         return self.cheack_worker_status(response)
         
-                
         
 if __name__ == '__main__':
     run = PassSlacktoWorkerInfo(TOKEN, CHANNEL_ID, FLOWER_SERVER_ADDRESS, AUTH)
