@@ -90,7 +90,6 @@ class PassSlacktoWorkerInfo:
                         response_worker_list= [ i for i,v in response.json().items() if bool(v)]
                         if response_worker_list.sort() == fields_worker_list.sort():
                             return False
-
                 else:
                     return False
                 if dt <=  now_time:
