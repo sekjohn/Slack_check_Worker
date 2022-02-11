@@ -88,8 +88,7 @@ class PassSlacktoWorkerInfo:
                     if response_worker_list.sort() == fields_worker_list.sort():
                         if dt <=  now_time:
                             break
-                        else:
-                            return False
+                        return False
         return True
 
     def worker_status_check(self):
