@@ -81,18 +81,15 @@ class PassSlacktoWorkerInfo:
         for i in msg:
             dt = datetime.fromtimestamp(float(i["ts"])) + timedelta(hours=24)
             now_time = datetime.now()
-            if "bot_id" in i:
-                if i["bot_id"] == SALCK_BOT_ID:
-                    if "fields" in i["attachments"][0]:
-                        fields_worker_list  = [v["value"] for v in i["attachments"][0]["fields"]]
-                        response_worker_list= [ i for i,v in response.json().items() if bool(v)]
-                        if response_worker_list.sort() == fields_worker_list.sort():
-                            return False
+            if "bot_id" in i and i["bot_id"] == SALCK_BOT_ID:
+                if "fields" in i["attachments"][0]:
+                    fields_worker_list  = [v["value"] for v in i["attachments"][0]["fields"]]
+                    response_worker_list= [ i for i,v in response.json().items() if bool(v)]
+                    if response_worker_list.sort() == fields_worker_list.sort():
+                        if dt <=  now_time:
+                            break
                         else:
-                            if dt <=  now_time:
-                                break
-                            else:
-                                return False
+                            return False
         return True
 
     def worker_status_check(self):
