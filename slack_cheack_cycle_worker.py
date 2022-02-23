@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime, timedelta
+from re import T
 import requests
 from requests.auth import HTTPBasicAuth
 from slack_sdk import WebClient
@@ -22,6 +23,17 @@ class SLACK_MSG:
     SLACK_SERVER_NOT_FOUND="server not found"
     SLACK_SERVER_AUTH_ERROR_MSG = "auth error"
     SLACK_SERVER_SERVER_NAME = "*Flower server:[SERVER1]*"
+    SLACK_SERVER_NOT_FOUND_MSG = [
+            {
+                "color": "#FF2C2C",
+                "title": ":no_entry_sign: [ERROR] Flower Server Not Found",
+                "title_link": f"http://{FLOWER_IP}:{FLOWER_SERVER_PORT}/",
+                "text": f":sob: *Flower server not found*\nflower url : <http://{FLOWER_IP}:{FLOWER_SERVER_PORT}/|url>",
+                "fields": None,
+                "footer": "Lionrocket flower api",
+                "footer_icon": "https://lionrocket.ai/lion_og.jpg"
+        }
+    ]
     SLACK_OFF_LINE_WORKER_MSG = [
             {
                 "color": "#FF2C2C",
@@ -94,7 +106,7 @@ class PassSlacktoWorkerInfo:
     def worker_status_check(self):
         response = requests.get(self.flower_address + "?status=1", auth=self.auth)
         if response.status_code == 500:
-            #self.send_msg(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
+            self.send_msg(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
             raise Exception(SLACK_MSG.SLACK_SERVER_NOT_FOUND)
         if response.status_code == 401:
             #self.send_msg(SLACK_MSG.SLACK_SERVER_AUTH_ERROR_MSG)
