@@ -27,7 +27,7 @@ AUTH = HTTPBasicAuth(FLOWER_USERNAME, FLOWER_PASSWORD)
 
 def get_docker(docker_name: str) -> docker:
     client = docker.from_env()
-    container = client.containers.list(filters={'name': docker_name})
+    container = client.containers.list(all=True, filters={'name': docker_name})
     if container:
         return client.containers.get(container[0].id)
     else:
@@ -127,7 +127,8 @@ class PassSlacktoWorkerInfo:
         docker_container = get_docker(FLOWER_DOCKER_NAME)
         if not docker_container:
             raise Exception("run docker name not found")
-        restart_docker(docker_container)
+        reuslt = restart_docker(docker_container)
+        print(reuslt)
         return None
 
     def cheack_error_worker_status(self):
