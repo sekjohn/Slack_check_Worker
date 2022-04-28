@@ -1,25 +1,50 @@
 import os
 import json
-from datetime import datetime, timedelta
-from re import T
+import docker
 import requests
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
 from requests.auth import HTTPBasicAuth
 from slack_sdk import WebClient
 
-FLOWER_USERNAME = os.getenv("FLOWER_USERNAM")
+load_dotenv(os.path.join(os.path.abspath(os.path.dirname(__file__)), '.env'))
+
+FLOWER_USERNAME = os.getenv("FLOWER_USERNAME")
 FLOWER_PASSWORD = os.getenv("FLOWER_PASSWORD")
 FLOWER_SERVER_PORT = os.getenv("FLOWER_SERVER_PORT")
+FLOWER_DOCKER_NAME = os.getenv("FLOWER_DOCKER_NAME")
 FLOWER_LOCAL_IP = "0.0.0.0"
 FLOWER_IP= os.getenv("FLOWER_SERVER_IP")
 SALCK_BOT_ID = os.getenv("SALCK_BOT_ID")
 TOKEN = os.getenv("SALCK_TOKEN")
 CHANNEL_ID = os.getenv("SALCK_CHANNEL_ID")
+ERROR_MSG_CHANNEL_ID = os.getenv("ERROR_MSG_CHANNEL_ID")
+
 
 FLOWER_SERVER_ADDRESS  =f"http://{FLOWER_IP}:{FLOWER_SERVER_PORT}/api/workers"
 AUTH = HTTPBasicAuth(FLOWER_USERNAME, FLOWER_PASSWORD)
 
 
+def get_docker(docker_name: str) -> docker:
+    client = docker.from_env()
+    container = client.containers.list(filters={'name': docker_name})
+    if container:
+        return client.containers.get(container[0].id)
+    else:
+        return False
+
+def restart_docker(container: docker) -> bool:
+    try:
+        container.stop()
+        container.start()
+    except Exception as e:
+        print(e)
+        return False
+    return True
+
+
 class SLACK_MSG:
+    SLACK_SENTRY_ERROR_MSG = "(2013, 'Lost connection to MySQL server during query')"
     SLACK_SERVER_NOT_FOUND="server not found"
     SLACK_SERVER_ERROR = "server error"
     SLACK_SERVER_AUTH_ERROR_MSG = "auth error"
@@ -79,12 +104,38 @@ class PassSlacktoWorkerInfo:
                 text = slack_msg,
             )
 
-    def get_msg(self):
+    def get_msg(self, channel=None):
+        if channel is None:
+            channel = self.channel_id
         result = self.client.conversations_history(
-            channel=self.channel_id, 
-            limit= 2
+            channel = channel, 
+            limit= 10,
         )
         return result.data['messages']
+
+    def get_error_msg(self,):
+        msg = self.get_msg(channel=ERROR_MSG_CHANNEL_ID)
+        for i in msg:
+            dt = datetime.fromtimestamp(float(i["ts"])) + timedelta(hours=24)
+            now_time = datetime.now()
+            if "bot_id" in i:
+                if dt <=  now_time and SLACK_MSG.SLACK_SENTRY_ERROR_MSG in i["attachments"][0]['text']:
+                    return True
+        return False
+
+    def restart_flower_server(self):
+        docker_container = get_docker(FLOWER_DOCKER_NAME)
+        if not docker_container:
+            raise Exception("run docker name not found")
+        restart_docker(docker_container)
+        return None
+
+    def cheack_error_worker_status(self):
+        reuslt_error_msg = self.get_error_msg()
+        if reuslt_error_msg:
+            self.restart_flower_server()
+            return True
+        return False
 
     def cheack_worker_status(self, response):
         off_line_woker = []
@@ -92,13 +143,13 @@ class PassSlacktoWorkerInfo:
             if not bool(v):
                 off_line_woker.append(i)
         if off_line_woker:
-            data = SLACK_MSG.SLACK_OFF_LINE_WORKER_MSG
-            worker_list = [{"value":f"`{i}`"} for i in off_line_woker]
-            data[0]["fields"] = worker_list
-            return self.send_msg(SLACK_MSG.SLACK_SERVER_SERVER_NAME, data)
-
-        else:
-            return None
+            result = self.cheack_error_worker_status()
+            if not result:
+                data = SLACK_MSG.SLACK_OFF_LINE_WORKER_MSG
+                worker_list = [{"value":f"`{i}`"} for i in off_line_woker]
+                data[0]["fields"] = worker_list
+                return self.send_msg(SLACK_MSG.SLACK_SERVER_SERVER_NAME, data)
+        return None
 
     def cheack_overlap_status(self, response: list):
         msg = self.get_msg()
