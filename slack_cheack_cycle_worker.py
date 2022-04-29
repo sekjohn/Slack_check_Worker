@@ -118,7 +118,7 @@ class PassSlacktoWorkerInfo:
             dt = datetime.fromtimestamp(float(i["ts"])) + timedelta(hours=24)
             now_time = datetime.now()
             if "bot_id" in i:
-                if dt <=  now_time and SLACK_MSG.SLACK_SENTRY_ERROR_MSG in i["attachments"][0]['text']:
+                if dt >=  now_time and SLACK_MSG.SLACK_SENTRY_ERROR_MSG in i["attachments"][0]['text']:
                     return True
         return False
 
