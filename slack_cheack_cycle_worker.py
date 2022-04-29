@@ -35,8 +35,7 @@ def get_docker(docker_name: str) -> docker:
 
 def restart_docker(container: docker) -> bool:
     try:
-        container.stop()
-        container.start()
+        container.restart()
     except Exception as e:
         print(e)
         return False
@@ -126,9 +125,10 @@ class PassSlacktoWorkerInfo:
     def restart_flower_server(self):
         docker_container = get_docker(FLOWER_DOCKER_NAME)
         if not docker_container:
-            raise Exception("run docker name not found")
+            raise Exception("[*] run docker name not found")
         reuslt = restart_docker(docker_container)
-        print(reuslt)
+        if not reuslt:
+            raise Exception("[*] restart docker error")
         return None
 
     def cheack_error_worker_status(self):
